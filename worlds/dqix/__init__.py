@@ -1,10 +1,19 @@
+from typing import Optional
+
 from BaseClasses import Tutorial, Item, ItemClassification, Location, Region
 from worlds.AutoWorld import World, WebWorld
 from .Client import DQIXClient
+from .Items import DQIXItems
+from .Locations import DQIXLocations
 
 
 class DQIXItem(Item):
     game = "Dragon Quest IX"
+    item_type: str
+
+    def __init__(self, name: str, classification: ItemClassification, code: Optional[int], player: int, item_type: str):
+        super(DQIXItem, self).__init__(name, classification, code, player)
+        self.item_type = item_type
 
 
 class DQIXLocation(Location):
@@ -29,26 +38,28 @@ class DragonQuestIXWeb(WebWorld):
 class DragonQuestIX(World):
     game = "Dragon Quest IX"
     required_client_version = (0, 6, 3)
+    origin_region_name = "Angel Falls"
     web = DragonQuestIXWeb()
 
-    item_name_to_id = {"Fygg": 123456}
-    location_name_to_id = {"start": 1}
+    items = DQIXItems()
+    locations = DQIXLocations()
 
-    main_locations = {"start": 1}
+    item_name_to_id = items.get_items()
+    location_name_to_id = locations.get_locations()
+
+    location_count: int = len(location_name_to_id)
 
     def create_item(self, name: str) -> "DQIXItem":
-        print("Creating Item: " + name)
-
-        return DQIXItem("Fygg", ItemClassification.progression, 1, self.player)
+        return DQIXItem(name, ItemClassification.progression if self.items.is_progression(name) else ItemClassification.useful if self.items.is_useful(name) else ItemClassification.filler, self.item_name_to_id[name], self.player,
+                        self.items.get_item_type(name))
 
     def create_items(self) -> None:
-        items = [DQIXItem("Fygg", ItemClassification.progression, 123456, self.player)]
+        items = [self.create_item(name) for name in self.item_id_to_name.values()]
+        items += [self.create_item("500 Gold") for _ in range(self.location_count - len(items))]
 
         self.multiworld.itempool += items
 
-    origin_region_name = "Angel Falls"
-
     def create_regions(self) -> None:
         main_region = Region(self.origin_region_name, self.player, self.multiworld)
-        main_region.add_locations(self.main_locations, DQIXLocation)
+        main_region.add_locations(self.location_name_to_id, DQIXLocation)
         self.multiworld.regions.append(main_region)
