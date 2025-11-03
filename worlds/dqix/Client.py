@@ -1,6 +1,8 @@
+import logging
 from typing import TYPE_CHECKING
 
 import worlds._bizhawk as bizhawk
+from NetUtils import NetworkItem
 from worlds._bizhawk.client import BizHawkClient
 
 if TYPE_CHECKING:
@@ -10,6 +12,7 @@ if TYPE_CHECKING:
 class DQIXClient(BizHawkClient):
     game = "Dragon Quest IX"
     system = "NDS"
+    last_known_index = None
 
     def __init__(self):
         self.current_money = None
@@ -27,6 +30,7 @@ class DQIXClient(BizHawkClient):
         # This is a MYGAME ROM
         ctx.game = self.game
         ctx.want_slot_data = True
+        ctx.items_handling = 0b111
 
         return True
 
@@ -34,8 +38,12 @@ class DQIXClient(BizHawkClient):
         if ctx.server is None:
             return
 
+        if ctx.slot_data is None:
+            return
+
         try:
             await self.location_check(ctx)
+            await self.received_items_check(ctx)
 
         except bizhawk.RequestFailedError:
             # The connector didn't respond. Exit handler and return to main loop to reconnect
@@ -44,5 +52,15 @@ class DQIXClient(BizHawkClient):
     async def location_check(self, ctx: "BizHawkClientContext"):
         money_value = int.from_bytes((await bizhawk.read(ctx=ctx.bizhawk_ctx, read_list=[(0x0F6D48, 4, "Main RAM")]))[0], "little")
         if money_value != self.current_money:
-            print("Money on Hand has changed to: " + str(money_value))
+            logging.info("Money on Hand has changed to: " + str(money_value))
             self.current_money = money_value
+
+    async def received_items_check(self, ctx: "BizHawkClientContext"):
+        network_item: NetworkItem
+        for index, network_item in enumerate(ctx.items_received):
+            if self.last_known_index is None or self.last_known_index < index:
+                self.last_known_index = index
+                logging.info("Received Item: ID = {0} and Location = {1} from Player = {2}".format(network_item.item, network_item.location, network_item.player))
+                await bizhawk.display_message(ctx.bizhawk_ctx, f"Received Item with ID {network_item.item}")
+                # TODO actually grant the received item, depending on what it is, e.g. gold is easy
+                # TODO save the last item index in a save file or save state

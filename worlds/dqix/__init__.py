@@ -1,7 +1,8 @@
+import logging
 from typing import Optional
 
 from BaseClasses import Tutorial, Item, ItemClassification, Location, Region
-from worlds.AutoWorld import World, WebWorld
+from ..AutoWorld import World, WebWorld
 from .Client import DQIXClient
 from .Items import DQIXItems
 from .Locations import DQIXLocations
@@ -50,8 +51,13 @@ class DragonQuestIX(World):
     location_count: int = len(location_name_to_id)
 
     def create_item(self, name: str) -> "DQIXItem":
-        return DQIXItem(name, ItemClassification.progression if self.items.is_progression(name) else ItemClassification.useful if self.items.is_useful(name) else ItemClassification.filler, self.item_name_to_id[name], self.player,
-                        self.items.get_item_type(name))
+        return DQIXItem(
+            name,
+            ItemClassification.progression if self.items.is_progression(name) else ItemClassification.useful if self.items.is_useful(name) else ItemClassification.filler,
+            self.item_name_to_id[name],
+            self.player,
+            self.items.get_item_type(name)
+        )
 
     def create_items(self) -> None:
         items = [self.create_item(name) for name in self.item_id_to_name.values()]
