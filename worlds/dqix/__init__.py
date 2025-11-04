@@ -2,8 +2,8 @@ from typing import Optional
 
 from BaseClasses import Tutorial, Item, ItemClassification, Location, Region
 from ..AutoWorld import World, WebWorld
-from .Client import DQIXClient
 from .Items import DQIXItems
+from .Client import DQIXClient
 from .Locations import DQIXLocations
 
 
@@ -41,11 +41,11 @@ class DragonQuestIX(World):
     origin_region_name = "Angel Falls"
     web = DragonQuestIXWeb()
 
-    item_helper = DQIXItems()
     location_helper = DQIXLocations()
+    item_helper = DQIXItems()
 
-    item_name_to_id = item_helper.get_items()
     location_name_to_id = location_helper.get_locations()
+    item_name_to_id = item_helper.get_items()
 
     def create_item(self, name: str) -> "DQIXItem":
         return DQIXItem(
@@ -57,7 +57,11 @@ class DragonQuestIX(World):
         )
 
     def create_items(self) -> None:
-        items = [self.create_item(name) for name in self.item_id_to_name.values()]
+        progression_item_names = {k for k in self.item_name_to_id.keys() if self.item_helper.is_progression(k)}
+        items = [self.create_item(name) for name in progression_item_names]
+        remaining_count_until_almost_full = (round(len(self.location_name_to_id) * 0.9) - len(items))
+        items += [self.create_item(useful_item) for useful_item in self.random.choices(population=list(self.item_helper.useful_items.keys()), k=remaining_count_until_almost_full)]
+
         items += [self.create_item(self.get_filler_item_name()) for _ in range(len(self.location_name_to_id) - len(items))]
 
         self.multiworld.itempool += items
@@ -68,4 +72,4 @@ class DragonQuestIX(World):
         self.multiworld.regions.append(main_region)
 
     def get_filler_item_name(self) -> str:
-        return self.random.choice(["500 Gold"])
+        return self.random.choice(self.item_helper.get_filler_item_names())

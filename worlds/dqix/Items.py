@@ -7,10 +7,11 @@ from BaseClasses import ItemClassification
 
 
 class ItemType(Enum):
-    COMMON_ITEM = "common_item"
-    IMPORTANT_ITEM = "important_item"
+    COMMON_ITEM = "common"
     EQUIPMENT = "equipment"
+    EXPERIENCE = "exp"
     GOLD = "gold"
+    IMPORTANT_ITEM = "important"
 
 
 class ItemData(NamedTuple):
@@ -23,13 +24,15 @@ class ItemData(NamedTuple):
 class DQIXItems:
     _item_table: Dict[str, ItemData] = {}
 
+    IMPORTANT_ITEM_IDS = [22042, 22043, 22044, 22158, 22159, 22160, 22162, 22164, 22165, 22166, 22167, 22168, 22169]
+
     def _parse_item_data(self):
         file = pkgutil.get_data(__name__, "data/items.json").decode("utf-8")
         items = json.loads(file)
 
-        self.progression_items = {name: ItemData(name, code, ItemType.IMPORTANT_ITEM, ItemClassification.progression) for name, code in items["progression"].items()}
-        self.useful_items = {name: ItemData(name, code, ItemType.COMMON_ITEM, ItemClassification.useful) for name, code in items["useful"].items()}
-        self.filler_items = {name: ItemData(name, code, ItemType.GOLD, ItemClassification.filler) for name, code in items["filler"].items()}
+        self.progression_items = {name: ItemData(name, item_data["code"], ItemType(item_data["item_type"]), ItemClassification.progression) for name, item_data in items["progression"].items()}
+        self.useful_items = {name: ItemData(name, item_data["code"], ItemType(item_data["item_type"]), ItemClassification.useful) for name, item_data in items["useful"].items()}
+        self.filler_items = {name: ItemData(name, item_data["code"], ItemType(item_data["item_type"]), ItemClassification.filler) for name, item_data in items["filler"].items()}
 
         final_item_table = {}
         final_item_table.update(self.progression_items)
@@ -54,3 +57,6 @@ class DQIXItems:
 
     def is_useful(self, name: str) -> bool:
         return name in self.useful_items
+
+    def get_filler_item_names(self):
+        return list(self.filler_items.keys())
