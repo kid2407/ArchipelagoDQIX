@@ -1,14 +1,22 @@
 import json
 import pkgutil
+from enum import Enum
 from typing import Dict, NamedTuple
 
 from BaseClasses import ItemClassification
 
 
+class ItemType(Enum):
+    COMMON_ITEM = "common_item"
+    IMPORTANT_ITEM = "important_item"
+    EQUIPMENT = "equipment"
+    GOLD = "gold"
+
+
 class ItemData(NamedTuple):
     name: str
     code: int
-    item_type: str
+    item_type: ItemType
     classification: ItemClassification
 
 
@@ -19,9 +27,9 @@ class DQIXItems:
         file = pkgutil.get_data(__name__, "data/items.json").decode("utf-8")
         items = json.loads(file)
 
-        self.progression_items = {name: ItemData(name, code, "progression", ItemClassification.progression) for name, code in items["progression"].items()}
-        self.useful_items = {name: ItemData(name, code, "useful", ItemClassification.useful) for name, code in items["useful"].items()}
-        self.filler_items = {name: ItemData(name, code, "extra", ItemClassification.filler) for name, code in items["filler"].items()}
+        self.progression_items = {name: ItemData(name, code, ItemType.IMPORTANT_ITEM, ItemClassification.progression) for name, code in items["progression"].items()}
+        self.useful_items = {name: ItemData(name, code, ItemType.COMMON_ITEM, ItemClassification.useful) for name, code in items["useful"].items()}
+        self.filler_items = {name: ItemData(name, code, ItemType.GOLD, ItemClassification.filler) for name, code in items["filler"].items()}
 
         final_item_table = {}
         final_item_table.update(self.progression_items)

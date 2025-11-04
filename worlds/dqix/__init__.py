@@ -1,4 +1,3 @@
-import logging
 from typing import Optional
 
 from BaseClasses import Tutorial, Item, ItemClassification, Location, Region
@@ -42,26 +41,24 @@ class DragonQuestIX(World):
     origin_region_name = "Angel Falls"
     web = DragonQuestIXWeb()
 
-    items = DQIXItems()
-    locations = DQIXLocations()
+    item_helper = DQIXItems()
+    location_helper = DQIXLocations()
 
-    item_name_to_id = items.get_items()
-    location_name_to_id = locations.get_locations()
-
-    location_count: int = len(location_name_to_id)
+    item_name_to_id = item_helper.get_items()
+    location_name_to_id = location_helper.get_locations()
 
     def create_item(self, name: str) -> "DQIXItem":
         return DQIXItem(
             name,
-            ItemClassification.progression if self.items.is_progression(name) else ItemClassification.useful if self.items.is_useful(name) else ItemClassification.filler,
+            ItemClassification.progression if self.item_helper.is_progression(name) else ItemClassification.useful if self.item_helper.is_useful(name) else ItemClassification.filler,
             self.item_name_to_id[name],
             self.player,
-            self.items.get_item_type(name)
+            self.item_helper.get_item_type(name)
         )
 
     def create_items(self) -> None:
         items = [self.create_item(name) for name in self.item_id_to_name.values()]
-        items += [self.create_item("500 Gold") for _ in range(self.location_count - len(items))]
+        items += [self.create_item(self.get_filler_item_name()) for _ in range(len(self.location_name_to_id) - len(items))]
 
         self.multiworld.itempool += items
 
@@ -69,3 +66,6 @@ class DragonQuestIX(World):
         main_region = Region(self.origin_region_name, self.player, self.multiworld)
         main_region.add_locations(self.location_name_to_id, DQIXLocation)
         self.multiworld.regions.append(main_region)
+
+    def get_filler_item_name(self) -> str:
+        return self.random.choice(["500 Gold"])
