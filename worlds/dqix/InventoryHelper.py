@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import worlds._bizhawk as bizhawk
 from worlds.dqix.Constants import DQIXConstants
@@ -79,9 +79,10 @@ class InventoryHelper:
             case ItemType.EXPERIENCE:
                 await self.grant_experience(item_id=item_id)
             case ItemType.IMPORTANT_ITEM:
-                await self.grant_important_item(item_id=item_id)
+                await self.give_player_item(item_start_address=DQIXConstants.IMPORTANT_ITEMS_TYPE_OFFSET.address, amount_start_address=DQIXConstants.IMPORTANT_ITEMS_COUNTS_OFFSET.address, segment_count=DQIXConstants.IMPORTANT_ITEMS_SEGMENTS,
+                                            item_id=item_id)
             case ItemType.COMMON_ITEM:
-                await self.grant_common_item(item_id=item_id)
+                await self.give_player_item(item_start_address=DQIXConstants.COMMON_ITEMS_TYPE_OFFSET.address, amount_start_address=DQIXConstants.COMMON_ITEMS_COUNTS_OFFSET.address, segment_count=DQIXConstants.COMMON_ITEMS_SEGMENTS, item_id=item_id)
             case ItemType.EQUIPMENT:
                 await self.grant_equipment(item_id=item_id)
             case None:
@@ -116,61 +117,49 @@ class InventoryHelper:
             case 100013:
                 exp_gained = 50000
 
-    async def grant_important_item(self, item_id: int):
-        important_item_inventory = await self.read_segments_as_ints_from_ram(
-            DQIXConstants.IMPORTANT_ITEMS_TYPE_START.address,
-            DQIXConstants.IMPORTANT_ITEMS_SEGMENTS,
-            DQIXConstants.IMPORTANT_ITEMS_TYPE_START.segment_size
-        )
-
-        try:
-            target_slot = important_item_inventory.index(65535)
-            existing_slot = True
-        except ValueError:
-            existing_slot = False
-            try:
-                target_slot = important_item_inventory.index(65535)
-            except ValueError:
-                logging.warning("Cannot add common item \"{}\": No empty slot in inventory found!".format(item_id))
-                return
-
-        target_address = hex(DQIXConstants.IMPORTANT_ITEMS_TYPE_START.address + DQIXConstants.IMPORTANT_ITEMS_TYPE_START.segment_size * target_slot)
-        amount_address = hex(DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.address + DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.segment_size * target_slot)
-
-        if existing_slot:
-            old_value = await self.read_int_from_ram(address=DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.address + DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.segment_size * target_slot, size=DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.segment_size)
-            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.segment_size, value=min(old_value + 1, 99))
-        else:
-            await self.write_int_to_ram(address=target_address, size=DQIXConstants.IMPORTANT_ITEMS_TYPE_START.segment_size, value=item_id)
-            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.IMPORTANT_ITEMS_COUNTS_START.segment_size, value=1)
-
-    async def grant_common_item(self, item_id: int):
-        common_item_inventory = await self.read_segments_as_ints_from_ram(
-            DQIXConstants.COMMON_ITEMS_TYPE_START.address,
-            DQIXConstants.COMMON_ITEMS_SEGMENTS,
-            DQIXConstants.COMMON_ITEMS_TYPE_START.segment_size
-        )
-
-        try:
-            target_slot = common_item_inventory.index(item_id)
-            existing_slot = True
-        except ValueError:
-            try:
-                target_slot = common_item_inventory.index(65535)
-                existing_slot = False
-            except ValueError:
-                logging.warning("Cannot add common item \"{}\": No empty slot in inventory found!".format(item_id))
-                return
-
-        target_address = hex(DQIXConstants.COMMON_ITEMS_TYPE_START.address + DQIXConstants.COMMON_ITEMS_TYPE_START.segment_size * target_slot)
-
-        amount_address = hex(DQIXConstants.COMMON_ITEMS_COUNTS_START.address + DQIXConstants.COMMON_ITEMS_COUNTS_START.segment_size * target_slot)
-        if existing_slot:
-            old_value = await self.read_int_from_ram(address=DQIXConstants.COMMON_ITEMS_COUNTS_START.address + DQIXConstants.COMMON_ITEMS_COUNTS_START.segment_size * target_slot, size=DQIXConstants.COMMON_ITEMS_COUNTS_START.segment_size)
-            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.COMMON_ITEMS_COUNTS_START.segment_size, value=min(old_value + 1, 99))
-        else:
-            await self.write_int_to_ram(address=target_address, size=DQIXConstants.COMMON_ITEMS_TYPE_START.segment_size, value=item_id)
-            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.COMMON_ITEMS_COUNTS_START.segment_size, value=1)
-
     async def grant_equipment(self, item_id: int):
         equipment_type = self.determine_equipment_type(item_id)
+
+        match equipment_type:
+            case EquipmentType.WEAPONS:
+                await self.give_player_item(DQIXConstants.WEAPONS_TYPE_OFFSET.address, DQIXConstants.WEAPONS_COUNTS_OFFSET.address, DQIXConstants.WEAPONS_SEGMENTS, item_id)
+            case EquipmentType.SHIELDS:
+                await self.give_player_item(DQIXConstants.SHIELDS_TYPE_OFFSET.address, DQIXConstants.SHIELDS_COUNTS_OFFSET.address, DQIXConstants.SHIELDS_SEGMENTS, item_id)
+            case EquipmentType.HEADWEAR:
+                await self.give_player_item(DQIXConstants.HEADWEAR_TYPE_OFFSET.address, DQIXConstants.HEADWEAR_COUNTS_OFFSET.address, DQIXConstants.HEADWEAR_SEGMENTS, item_id)
+            case EquipmentType.TORSO:
+                await self.give_player_item(DQIXConstants.TORSO_TYPE_OFFSET.address, DQIXConstants.TORSO_COUNTS_OFFSET.address, DQIXConstants.TORSO_SEGMENTS, item_id)
+            case EquipmentType.ARMS:
+                await self.give_player_item(DQIXConstants.ARMS_TYPE_OFFSET.address, DQIXConstants.ARMS_COUNTS_OFFSET.address, DQIXConstants.ARMS_SEGMENTS, item_id)
+            case EquipmentType.LEGS:
+                await self.give_player_item(DQIXConstants.LEGS_TYPE_OFFSET.address, DQIXConstants.LEGS_COUNTS_OFFSET.address, DQIXConstants.LEGS_SEGMENTS, item_id)
+            case EquipmentType.FOOTWEAR:
+                await self.give_player_item(DQIXConstants.FOOTWEAR_TYPE_OFFSET.address, DQIXConstants.FOOTWEAR_COUNTS_OFFSET.address, DQIXConstants.FOOTWEAR_SEGMENTS, item_id)
+            case EquipmentType.ACCESSORIES:
+                await self.give_player_item(DQIXConstants.ACCESSORIES_TYPE_OFFSET.address, DQIXConstants.ACCESSORIES_COUNTS_OFFSET.address, DQIXConstants.ACCESSORIES_SEGMENTS, item_id)
+            case None:
+                logging.warning("Uh-oh, could not determine the equipment type for equipment with ID = {0}. This should not happen, please report this error to the author.".format(item_id))
+
+    async def give_player_item(self, item_start_address: int, amount_start_address: int, segment_count: int, item_id: int):
+        item_inventory = await self.read_segments_as_ints_from_ram(item_start_address, segment_count, 2)
+
+        try:
+            target_slot = item_inventory.index(item_id)
+            existing_slot = True
+        except ValueError:
+            try:
+                target_slot = item_inventory.index(65535)
+                existing_slot = False
+            except ValueError:
+                logging.warning("Cannot add item \"{}\": No empty slot in inventory found!".format(item_id))
+                return
+
+        item_address = hex(item_start_address + 2 * target_slot)
+        amount_address = hex(amount_start_address + target_slot)
+
+        if existing_slot:
+            old_value = await self.read_int_from_ram(address=amount_address, size=1)
+            await self.write_int_to_ram(address=amount_address, size=1, value=min(old_value + 1, 99))
+        else:
+            await self.write_int_to_ram(address=item_address, size=2, value=item_id)
+            await self.write_int_to_ram(address=amount_address, size=1, value=1)
