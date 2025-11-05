@@ -4425,19 +4425,19 @@
       "item_type": "gold"
     },
     "Experience (A small amount)": {
-      "code": 100011,
+      "code": 100010,
       "item_type": "exp"
     },
     "Experience (A medium amount)": {
-      "code": 100012,
+      "code": 100011,
       "item_type": "exp"
     },
     "Experience (A large amount)": {
-      "code": 100013,
+      "code": 100012,
       "item_type": "exp"
     },
     "Experience (A huge amount)": {
-      "code": 100014,
+      "code": 100013,
       "item_type": "exp"
     }
   }
