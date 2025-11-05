@@ -61,10 +61,9 @@ class DQIXClient(BizHawkClient):
         for index, network_item in enumerate(ctx.items_received):
             if self.last_known_index is None or self.last_known_index < index:
                 self.last_known_index = index
-                logging.info("Received Item: ID = {0} and Location = {1} from Player = {2}".format(network_item.item, network_item.location, network_item.player))
+                logging.info("Received Item: {0} from Player = {1}".format(network_item.item, network_item.player))
                 await bizhawk.set_message_interval(ctx=ctx.bizhawk_ctx, value=5)
                 await bizhawk.display_message(ctx.bizhawk_ctx, f"Received Item with ID {network_item.item}")
                 inventory_helper = InventoryHelper(ctx=ctx)
                 await inventory_helper.grant_received_item(item_id=network_item.item)
-                # TODO actually grant the received item, depending on what it is, e.g. gold is easy
                 # TODO save the last item index in a save file or save state
