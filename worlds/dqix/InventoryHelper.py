@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import worlds._bizhawk as bizhawk
 from worlds.dqix.Constants import DQIXConstants
@@ -61,6 +61,10 @@ class InventoryHelper:
         address = int(address, 16) if isinstance(address, str) else address
         return int.from_bytes((await bizhawk.read(ctx=self.ctx.bizhawk_ctx, read_list=[(address, size, "Main RAM")]))[0], "little")
 
+    async def read_ints_from_ram(self, addresses: List[int | str], size: int) -> List[int]:
+        data = await bizhawk.read(ctx=self.ctx.bizhawk_ctx, read_list=[(int(address, 16) if isinstance(address, str) else address, size, "Main RAM") for address in addresses])
+        return [int.from_bytes(found_bytes, "little") for found_bytes in data]
+
     async def write_int_to_ram(self, address: int | str, size: int, value: int):
         address = int(address, 16) if isinstance(address, str) else address
         await bizhawk.write(ctx=self.ctx.bizhawk_ctx, write_list=[(address, int.to_bytes(value, size, "little"), "Main RAM")])
@@ -79,11 +83,10 @@ class InventoryHelper:
             case ItemType.EXPERIENCE:
                 await self.grant_experience(item_id=item_id)
             case ItemType.IMPORTANT_ITEM:
-                await self.give_player_item(item_start_address=DQIXConstants.IMPORTANT_ITEMS_TYPE_OFFSET, amount_start_address=DQIXConstants.IMPORTANT_ITEMS_COUNTS_OFFSET,
-                                            segment_count=DQIXConstants.IMPORTANT_ITEMS_SEGMENTS,
-                                            item_id=item_id)
+                await self.give_player_item(item_offset=DQIXConstants.IMPORTANT_ITEMS_TYPE_OFFSET, amount_offset=DQIXConstants.IMPORTANT_ITEMS_COUNTS_OFFSET,
+                                            segment_count=DQIXConstants.IMPORTANT_ITEMS_SEGMENTS, item_id=item_id)
             case ItemType.COMMON_ITEM:
-                await self.give_player_item(item_start_address=DQIXConstants.COMMON_ITEMS_TYPE_OFFSET, amount_start_address=DQIXConstants.COMMON_ITEMS_COUNTS_OFFSET,
+                await self.give_player_item(item_offset=DQIXConstants.COMMON_ITEMS_TYPE_OFFSET, amount_offset=DQIXConstants.COMMON_ITEMS_COUNTS_OFFSET,
                                             segment_count=DQIXConstants.COMMON_ITEMS_SEGMENTS, item_id=item_id)
             case ItemType.EQUIPMENT:
                 await self.grant_equipment(item_id=item_id)
@@ -105,19 +108,30 @@ class InventoryHelper:
         await self.write_int_to_ram(address=DQIXConstants.GOLD_AT_HAND, size=DQIXConstants.GOLD_VALUE_SIZE, value=min(max(current_gold + gold_gained, 0), 999999999))
 
     async def grant_experience(self, item_id: int):
-        # TODO Get class and EXP for the current vocations of the group
-        # TODO Then Add experience per character in the party
         # TODO Check if it breaks anything when modifying EXP like this
         exp_gained = 0
         match item_id:
             case 100010:
                 exp_gained = 50
             case 100011:
-                exp_gained = 500
+                exp_gained = 4096
             case 100012:
-                exp_gained = 5000
+                exp_gained = 12288
             case 100013:
-                exp_gained = 50000
+                exp_gained = 40200
+
+        if exp_gained > 0:
+            character_vocations = await self.read_ints_from_ram([
+                DQIXConstants.CHAR_1_CURRENT_VOCATION,
+                DQIXConstants.CHAR_2_CURRENT_VOCATION,
+                DQIXConstants.CHAR_3_CURRENT_VOCATION,
+                DQIXConstants.CHAR_4_CURRENT_VOCATION
+            ], 4)
+
+            await self.give_character_experience(current_vocation=character_vocations[0], experience_offset=DQIXConstants.CHAR_1_VOCATION_EXP_OFFSET, earned_experience=exp_gained)
+            await self.give_character_experience(current_vocation=character_vocations[1], experience_offset=DQIXConstants.CHAR_2_VOCATION_EXP_OFFSET, earned_experience=exp_gained)
+            await self.give_character_experience(current_vocation=character_vocations[2], experience_offset=DQIXConstants.CHAR_3_VOCATION_EXP_OFFSET, earned_experience=exp_gained)
+            await self.give_character_experience(current_vocation=character_vocations[3], experience_offset=DQIXConstants.CHAR_4_VOCATION_EXP_OFFSET, earned_experience=exp_gained)
 
     async def grant_equipment(self, item_id: int):
         equipment_type = self.determine_equipment_type(item_id)
@@ -142,8 +156,8 @@ class InventoryHelper:
             case None:
                 logging.warning("Uh-oh, could not determine the equipment type for equipment with ID = {0}. This should not happen, please report this error to the author.".format(item_id))
 
-    async def give_player_item(self, item_start_address: int, amount_start_address: int, segment_count: int, item_id: int):
-        item_inventory = await self.read_segments_as_ints_from_ram(item_start_address, segment_count, DQIXConstants.ITEM_TYPE_SIZE)
+    async def give_player_item(self, item_offset: int, amount_offset: int, segment_count: int, item_id: int):
+        item_inventory = await self.read_segments_as_ints_from_ram(item_offset, segment_count, DQIXConstants.ITEM_TYPE_SIZE)
 
         try:
             target_slot = item_inventory.index(item_id)
@@ -156,8 +170,8 @@ class InventoryHelper:
                 logging.warning("Cannot add item \"{}\": No empty slot in inventory found!".format(item_id))
                 return
 
-        item_address = hex(item_start_address + 2 * target_slot)
-        amount_address = hex(amount_start_address + target_slot)
+        item_address = hex(item_offset + 2 * target_slot)
+        amount_address = hex(amount_offset + target_slot)
 
         if existing_slot:
             old_value = await self.read_int_from_ram(address=amount_address, size=DQIXConstants.ITEM_AMOUNT_SIZE)
@@ -165,3 +179,14 @@ class InventoryHelper:
         else:
             await self.write_int_to_ram(address=item_address, size=DQIXConstants.ITEM_TYPE_SIZE, value=item_id)
             await self.write_int_to_ram(address=amount_address, size=DQIXConstants.ITEM_AMOUNT_SIZE, value=1)
+
+    async def give_character_experience(self, current_vocation: int, experience_offset: int, earned_experience: int):
+        logging.warning("Current vocation: " + str(current_vocation))
+        logging.warning("Exp Offset: " + hex(experience_offset))
+        if current_vocation == 0:
+            return
+
+        target_address = experience_offset + (current_vocation - 1) * 4
+        current_exp = await self.read_int_from_ram(target_address, 4)
+        logging.warning("Current exp: " + str(current_exp))
+        await self.write_int_to_ram(target_address, 4, current_exp + earned_experience)
