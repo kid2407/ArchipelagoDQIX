@@ -79,17 +79,19 @@ class InventoryHelper:
             case ItemType.EXPERIENCE:
                 await self.grant_experience(item_id=item_id)
             case ItemType.IMPORTANT_ITEM:
-                await self.give_player_item(item_start_address=DQIXConstants.IMPORTANT_ITEMS_TYPE_OFFSET.address, amount_start_address=DQIXConstants.IMPORTANT_ITEMS_COUNTS_OFFSET.address, segment_count=DQIXConstants.IMPORTANT_ITEMS_SEGMENTS,
+                await self.give_player_item(item_start_address=DQIXConstants.IMPORTANT_ITEMS_TYPE_OFFSET, amount_start_address=DQIXConstants.IMPORTANT_ITEMS_COUNTS_OFFSET,
+                                            segment_count=DQIXConstants.IMPORTANT_ITEMS_SEGMENTS,
                                             item_id=item_id)
             case ItemType.COMMON_ITEM:
-                await self.give_player_item(item_start_address=DQIXConstants.COMMON_ITEMS_TYPE_OFFSET.address, amount_start_address=DQIXConstants.COMMON_ITEMS_COUNTS_OFFSET.address, segment_count=DQIXConstants.COMMON_ITEMS_SEGMENTS, item_id=item_id)
+                await self.give_player_item(item_start_address=DQIXConstants.COMMON_ITEMS_TYPE_OFFSET, amount_start_address=DQIXConstants.COMMON_ITEMS_COUNTS_OFFSET,
+                                            segment_count=DQIXConstants.COMMON_ITEMS_SEGMENTS, item_id=item_id)
             case ItemType.EQUIPMENT:
                 await self.grant_equipment(item_id=item_id)
             case None:
                 logging.warning("Uh-oh, could not determine the item type for item with ID = {0}. This should not happen, please report this error to the author.".format(item_id))
 
     async def grant_gold(self, item_id: int):
-        current_gold = await self.read_int_from_ram(address=DQIXConstants.GOLD_AT_HAND.address, size=DQIXConstants.GOLD_AT_HAND.segment_size)
+        current_gold = await self.read_int_from_ram(address=DQIXConstants.GOLD_AT_HAND, size=DQIXConstants.GOLD_VALUE_SIZE)
         gold_gained = 0
         match item_id:
             case 100000:
@@ -100,7 +102,7 @@ class InventoryHelper:
                 gold_gained = 5000
             case 100003:
                 gold_gained = 50000
-        await self.write_int_to_ram(address=DQIXConstants.GOLD_AT_HAND.address, size=DQIXConstants.GOLD_AT_HAND.segment_size, value=min(max(current_gold + gold_gained, 0), 999999999))
+        await self.write_int_to_ram(address=DQIXConstants.GOLD_AT_HAND, size=DQIXConstants.GOLD_VALUE_SIZE, value=min(max(current_gold + gold_gained, 0), 999999999))
 
     async def grant_experience(self, item_id: int):
         # TODO Get class and EXP for the current vocations of the group
@@ -122,33 +124,33 @@ class InventoryHelper:
 
         match equipment_type:
             case EquipmentType.WEAPONS:
-                await self.give_player_item(DQIXConstants.WEAPONS_TYPE_OFFSET.address, DQIXConstants.WEAPONS_COUNTS_OFFSET.address, DQIXConstants.WEAPONS_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.WEAPONS_TYPE_OFFSET, DQIXConstants.WEAPONS_COUNTS_OFFSET, DQIXConstants.WEAPONS_SEGMENTS, item_id)
             case EquipmentType.SHIELDS:
-                await self.give_player_item(DQIXConstants.SHIELDS_TYPE_OFFSET.address, DQIXConstants.SHIELDS_COUNTS_OFFSET.address, DQIXConstants.SHIELDS_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.SHIELDS_TYPE_OFFSET, DQIXConstants.SHIELDS_COUNTS_OFFSET, DQIXConstants.SHIELDS_SEGMENTS, item_id)
             case EquipmentType.HEADWEAR:
-                await self.give_player_item(DQIXConstants.HEADWEAR_TYPE_OFFSET.address, DQIXConstants.HEADWEAR_COUNTS_OFFSET.address, DQIXConstants.HEADWEAR_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.HEADWEAR_TYPE_OFFSET, DQIXConstants.HEADWEAR_COUNTS_OFFSET, DQIXConstants.HEADWEAR_SEGMENTS, item_id)
             case EquipmentType.TORSO:
-                await self.give_player_item(DQIXConstants.TORSO_TYPE_OFFSET.address, DQIXConstants.TORSO_COUNTS_OFFSET.address, DQIXConstants.TORSO_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.TORSO_TYPE_OFFSET, DQIXConstants.TORSO_COUNTS_OFFSET, DQIXConstants.TORSO_SEGMENTS, item_id)
             case EquipmentType.ARMS:
-                await self.give_player_item(DQIXConstants.ARMS_TYPE_OFFSET.address, DQIXConstants.ARMS_COUNTS_OFFSET.address, DQIXConstants.ARMS_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.ARMS_TYPE_OFFSET, DQIXConstants.ARMS_COUNTS_OFFSET, DQIXConstants.ARMS_SEGMENTS, item_id)
             case EquipmentType.LEGS:
-                await self.give_player_item(DQIXConstants.LEGS_TYPE_OFFSET.address, DQIXConstants.LEGS_COUNTS_OFFSET.address, DQIXConstants.LEGS_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.LEGS_TYPE_OFFSET, DQIXConstants.LEGS_COUNTS_OFFSET, DQIXConstants.LEGS_SEGMENTS, item_id)
             case EquipmentType.FOOTWEAR:
-                await self.give_player_item(DQIXConstants.FOOTWEAR_TYPE_OFFSET.address, DQIXConstants.FOOTWEAR_COUNTS_OFFSET.address, DQIXConstants.FOOTWEAR_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.FOOTWEAR_TYPE_OFFSET, DQIXConstants.FOOTWEAR_COUNTS_OFFSET, DQIXConstants.FOOTWEAR_SEGMENTS, item_id)
             case EquipmentType.ACCESSORIES:
-                await self.give_player_item(DQIXConstants.ACCESSORIES_TYPE_OFFSET.address, DQIXConstants.ACCESSORIES_COUNTS_OFFSET.address, DQIXConstants.ACCESSORIES_SEGMENTS, item_id)
+                await self.give_player_item(DQIXConstants.ACCESSORIES_TYPE_OFFSET, DQIXConstants.ACCESSORIES_COUNTS_OFFSET, DQIXConstants.ACCESSORIES_SEGMENTS, item_id)
             case None:
                 logging.warning("Uh-oh, could not determine the equipment type for equipment with ID = {0}. This should not happen, please report this error to the author.".format(item_id))
 
     async def give_player_item(self, item_start_address: int, amount_start_address: int, segment_count: int, item_id: int):
-        item_inventory = await self.read_segments_as_ints_from_ram(item_start_address, segment_count, 2)
+        item_inventory = await self.read_segments_as_ints_from_ram(item_start_address, segment_count, DQIXConstants.ITEM_TYPE_SIZE)
 
         try:
             target_slot = item_inventory.index(item_id)
             existing_slot = True
         except ValueError:
             try:
-                target_slot = item_inventory.index(65535)
+                target_slot = item_inventory.index(DQIXConstants.ITEM_DATA_NO_ITEM)
                 existing_slot = False
             except ValueError:
                 logging.warning("Cannot add item \"{}\": No empty slot in inventory found!".format(item_id))
@@ -158,8 +160,8 @@ class InventoryHelper:
         amount_address = hex(amount_start_address + target_slot)
 
         if existing_slot:
-            old_value = await self.read_int_from_ram(address=amount_address, size=1)
-            await self.write_int_to_ram(address=amount_address, size=1, value=min(old_value + 1, 99))
+            old_value = await self.read_int_from_ram(address=amount_address, size=DQIXConstants.ITEM_AMOUNT_SIZE)
+            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.ITEM_AMOUNT_SIZE, value=min(old_value + 1, 99))
         else:
-            await self.write_int_to_ram(address=item_address, size=2, value=item_id)
-            await self.write_int_to_ram(address=amount_address, size=1, value=1)
+            await self.write_int_to_ram(address=item_address, size=DQIXConstants.ITEM_TYPE_SIZE, value=item_id)
+            await self.write_int_to_ram(address=amount_address, size=DQIXConstants.ITEM_AMOUNT_SIZE, value=1)

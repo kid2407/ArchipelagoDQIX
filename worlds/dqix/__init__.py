@@ -69,7 +69,41 @@ class DragonQuestIX(World):
     def create_regions(self) -> None:
         main_region = Region(self.origin_region_name, self.player, self.multiworld)
         main_region.add_locations(self.location_name_to_id, DQIXLocation)
+
         self.multiworld.regions.append(main_region)
+
+        region_stornway = Region("Stornway / Zere", self.player, self.multiworld)
+        region_coffinwell = Region("Coffinwell", self.player, self.multiworld)
+        region_alltrades = Region("Alltrades Abbey / Porth Llaffan / Observatory (After Attack)", self.player, self.multiworld)
+        region_bloomingdale_zere = Region("A new continent (Slurry Quay / Dourbridge / Zere Rocks / Bloomingdale)", self.player, self.multiworld)
+        region_ship_places = Region("A new World (Gleeba, Batsureg, Swinedimpels (Wormwood Creek))", self.player, self.multiworld)
+        region_bowhole = Region("Wormwood Creek / Bowhole", self.player, self.multiworld)
+        region_upover = Region("Upover / Magmaroo", self.player, self.multiworld)
+        region_goretress = Region("Goretress", self.player, self.multiworld)
+        region_gittingham_palace = Region("Gittingham Palace", self.player, self.multiworld)
+        region_realm_mighty = Region("Realm of the Mighty", self.player, self.multiworld)
+
+        main_region.connect(connecting_region=region_stornway, rule=lambda state: state.has(item="Inny", player=self.player, count=1))
+        region_stornway.connect(connecting_region=region_coffinwell, )  # Check for game chapter
+        region_coffinwell.connect(connecting_region=region_alltrades, )  # Has returned to the Observatory, perhaps count benevolessence?
+        region_alltrades.connect(connecting_region=region_bloomingdale_zere, rule=lambda state: state.has(item="Fygg", player=self.player, count=1))
+        region_bloomingdale_zere.connect(connecting_region=region_ship_places, )  # Check if has unlocked ship
+        region_ship_places.connect(connecting_region=region_bowhole, rule=lambda state: state.has(item="Serene necklace", player=self.player, count=1))  # Bowhole has been unlocked / Seren Necklace?
+        region_bowhole.connect(connecting_region=region_upover, rule=lambda state: state.has(item="Wyrmlight bow", player=self.player, count=1))
+        region_upover.connect(connecting_region=region_goretress, )  # When battle of Greygnarl vs Barbarus happens
+        region_goretress.connect(connecting_region=region_gittingham_palace, rule=lambda state: state.has(item="Ultimate key", player=self.player, count=1))  # After boss has been defeated
+        region_gittingham_palace.connect(connecting_region=region_realm_mighty, )  # After "killed" by Corvus, perhaps game chapter
+
+        self.multiworld.regions.append(region_stornway)
+        self.multiworld.regions.append(region_coffinwell)
+        self.multiworld.regions.append(region_alltrades)
+        self.multiworld.regions.append(region_bloomingdale_zere)
+        self.multiworld.regions.append(region_ship_places)
+        self.multiworld.regions.append(region_bowhole)
+        self.multiworld.regions.append(region_upover)
+        self.multiworld.regions.append(region_goretress)
+        self.multiworld.regions.append(region_gittingham_palace)
+        self.multiworld.regions.append(region_realm_mighty)
 
     def get_filler_item_name(self) -> str:
         return self.random.choice(self.item_helper.get_filler_item_names())
